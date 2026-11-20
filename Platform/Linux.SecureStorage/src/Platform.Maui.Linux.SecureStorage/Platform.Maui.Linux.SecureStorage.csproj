@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <Version>0.1.0-preview.1</Version>
+    <Description>Linux Secret Service implementation of .NET MAUI ISecureStorage using libsecret, with no file fallback.</Description>
+    <PackageTags>maui;linux;securestorage;libsecret;keyring</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/Redth/Plugins.Maui/tree/main/Platform/Linux.SecureStorage</PackageProjectUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Essentials" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <InternalsVisibleTo Include="Platform.Maui.Linux.SecureStorage.Tests" />
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <None Include="../../SECURITY.md" Pack="true" PackagePath="/" />
+    <None Include="../../THIRD-PARTY-NOTICES.txt" Pack="true" PackagePath="/" />
+  </ItemGroup>
+</Project>
