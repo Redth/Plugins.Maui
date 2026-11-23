@@ -1,0 +1,88 @@
+name: Linux SecureStorage
+
+on:
+  push:
+    paths:
+      - "Platform/Linux.SecureStorage/**"
+      - "Directory.Build.props"
+      - "global.json"
+      - "NuGet.Config"
+      - ".github/workflows/linux-secure-storage.yml"
+  pull_request:
+    paths:
+      - "Platform/Linux.SecureStorage/**"
+      - "Directory.Build.props"
+      - "global.json"
+      - "NuGet.Config"
+      - ".github/workflows/linux-secure-storage.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: dotnet test Platform/Linux.SecureStorage/Linux.SecureStorage.slnx -c Release
+      - run: dotnet pack Platform/Linux.SecureStorage/src/Platform.Maui.Linux.SecureStorage -c Release -o artifacts/packages
+
+  keyring:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Install native test dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y libsecret-1-0 gnome-keyring dbus-x11
+      - run: dotnet build Platform/Linux.SecureStorage/Linux.SecureStorage.slnx -c Release
+      - name: Exercise a disposable keyring
+        env:
+          LINUX_SECURE_STORAGE_INTEGRATION: "1"
+          LINUX_SECURE_STORAGE_TEST_PASSWORD: disposable-test-password
+        shell: bash
+        run: |
+          export HOME="$(mktemp -d "$RUNNER_TEMP/securestorage.XXXXXX")"
+          export XDG_DATA_HOME="$HOME/.local/share"
+          export XDG_CONFIG_HOME="$HOME/.config"
+          export XDG_CACHE_HOME="$HOME/.cache"
+          export XDG_RUNTIME_DIR="$HOME/run"
+          mkdir -p "$XDG_RUNTIME_DIR"
+          chmod 700 "$XDG_RUNTIME_DIR"
+          dbus-run-session -- bash -euo pipefail -c '
+            printf "%s" "$LINUX_SECURE_STORAGE_TEST_PASSWORD" | gnome-keyring-daemon --unlock --components=secrets
+            dotnet test Platform/Linux.SecureStorage/Linux.SecureStorage.slnx -c Release --no-build --no-restore --filter Category=Keyring
+            dotnet run --project Platform/Linux.SecureStorage/samples/Linux.SecureStorage.Sample -c Release --no-build --no-restore
+          '
+      - name: Reject locked items without partially clearing unlocked items
+        env:
+          LINUX_SECURE_STORAGE_INTEGRATION: "1"
+          LINUX_SECURE_STORAGE_LOCK_TEST: "1"
+          LINUX_SECURE_STORAGE_TEST_PASSWORD: disposable-test-password
+        shell: bash
+        run: |
+          unset DISPLAY WAYLAND_DISPLAY
+          export HOME="$(mktemp -d "$RUNNER_TEMP/securestorage-locked.XXXXXX")"
+          export XDG_DATA_HOME="$HOME/.local/share"
+          export XDG_CONFIG_HOME="$HOME/.config"
+          export XDG_CACHE_HOME="$HOME/.cache"
+          export XDG_RUNTIME_DIR="$HOME/run"
+          mkdir -p "$XDG_RUNTIME_DIR"
+          chmod 700 "$XDG_RUNTIME_DIR"
+          dbus-run-session -- bash -euo pipefail -c '
+            printf "%s" "$LINUX_SECURE_STORAGE_TEST_PASSWORD" | gnome-keyring-daemon --unlock --components=secrets
+            dotnet test Platform/Linux.SecureStorage/Linux.SecureStorage.slnx -c Release --no-build --no-restore --filter Category=LockedKeyring
+          '
+      - name: Reject unavailable Secret Service
+        env:
+          LINUX_SECURE_STORAGE_NO_SERVICE: "1"
+          DBUS_SESSION_BUS_ADDRESS: unix:path=/nonexistent/securestorage-test-bus
+        run: dotnet test Platform/Linux.SecureStorage/Linux.SecureStorage.slnx -c Release --no-build --no-restore --filter Category=NoService

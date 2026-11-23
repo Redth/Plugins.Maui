@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Platform.Maui.Linux.SecureStorage/Platform.Maui.Linux.SecureStorage.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/Linux.SecureStorage.Sample/Linux.SecureStorage.Sample.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Platform.Maui.Linux.SecureStorage.Tests/Platform.Maui.Linux.SecureStorage.Tests.csproj" />
+  </Folder>
+</Solution>
